@@ -45,7 +45,11 @@ public class McpConfig {
                 double a = ((Number) args.get("a")).doubleValue();
                 double b = ((Number) args.get("b")).doubleValue();
                 double result = service.sum(a, b);
-                return new CallToolResult(List.of(new TextContent(String.valueOf(result))), false);
+                // Retourne une ressource embarquée avec mimeType application/json
+                var resource = new EmbeddedResource(
+                    new TextResourceContents("result://sum", "application/json", String.format("{\"value\": %s}", result))
+                );
+                return new CallToolResult(List.of(resource), false);
             }
         );
 
@@ -62,7 +66,11 @@ public class McpConfig {
                 double a = ((Number) args.get("a")).doubleValue();
                 double b = ((Number) args.get("b")).doubleValue();
                 double result = service.subtract(a, b);
-                return new CallToolResult(List.of(new TextContent(String.valueOf(result))), false);
+                // Retourne une ressource embarquée avec mimeType application/json
+                var resource = new EmbeddedResource(
+                    new TextResourceContents("result://subtract", "application/json", String.format("{\"value\": %s}", result))
+                );
+                return new CallToolResult(List.of(resource), false);
             }
         );
 
