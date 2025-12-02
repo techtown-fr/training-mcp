@@ -5,7 +5,7 @@ It exposes two tools: `sum` and `subtract`.
 
 ## Technical Details
 
-- **MCP SDK Version**: 0.8.0
+- **MCP SDK Version**: 0.16.0
 - **Java Version**: 21
 - **Spring Boot Version**: 3.4.0
 - **Transport**: Server-Sent Events (SSE) via WebMVC

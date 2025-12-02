@@ -15,8 +15,8 @@ Ce projet est un serveur MCP (Model Context Protocol) démonstratif implémenté
 
 ### Dépendances principales
 - **Spring Boot**: 3.4.0
-- **MCP SDK**: 0.10.0
-  - `io.modelcontextprotocol.sdk:mcp`
+- **MCP SDK**: 0.16.0
+  - `io.modelcontextprotocol.sdk:mcp` (module parapluie incluant mcp-core et mcp-json-jackson)
   - `io.modelcontextprotocol.sdk:mcp-spring-webmvc`
 - **Lombok**: Version gérée par Spring Boot (scope: compile optionnel)
 - **Spring Boot Starter Web**: Version gérée par Spring Boot
@@ -39,12 +39,12 @@ Ce projet est un serveur MCP (Model Context Protocol) démonstratif implémenté
 
 **Ajout de nouveaux outils MCP:**
 1. Créer ou étendre le service métier dans `CalculatorService` ou un nouveau service
-2. Déclarer l'outil dans `McpConfig` avec la méthode `McpSchema.tool()`
+2. Déclarer l'outil dans `McpConfig` avec `Tool.Builder` et `McpServerFeatures.SyncToolSpecification`
 3. Spécifier clairement:
-   - Le nom de l'outil
-   - La description
-   - Le schéma des paramètres (avec `McpSchema.object()`)
-   - Le handler qui implémente la logique
+   - Le nom de l'outil (`.name()`)
+   - La description (`.description()`)
+   - Le schéma des paramètres (`.inputSchema(jsonMapper, schemaJsonString)`)
+   - Le handler qui implémente la logique (lambda `(exchange, args) -> CallToolResult`)
 
 ### 2. Gestion des dépendances
 
@@ -185,5 +185,6 @@ mvn checkstyle:check
 ---
 
 **Date de création**: Décembre 2024  
-**Version du guide**: 1.0
+**Dernière mise à jour**: Décembre 2024 (MCP SDK 0.16.0)  
+**Version du guide**: 1.1
 

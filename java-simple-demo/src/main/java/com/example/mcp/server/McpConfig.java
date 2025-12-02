@@ -1,6 +1,6 @@
 package com.example.mcp.server;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import io.modelcontextprotocol.json.McpJsonMapper;
 import io.modelcontextprotocol.server.McpServer;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.server.McpServerFeatures;
@@ -21,8 +21,16 @@ public class McpConfig {
     private static final String MESSAGE_ENDPOINT = "/messages";
 
     @Bean
-    public WebMvcSseServerTransportProvider webMvcSseServerTransportProvider(ObjectMapper objectMapper) {
-        return new WebMvcSseServerTransportProvider(objectMapper, MESSAGE_ENDPOINT);
+    public McpJsonMapper mcpJsonMapper() {
+        return McpJsonMapper.createDefault();
+    }
+
+    @Bean
+    public WebMvcSseServerTransportProvider webMvcSseServerTransportProvider(McpJsonMapper jsonMapper) {
+        return new WebMvcSseServerTransportProvider.Builder()
+            .jsonMapper(jsonMapper)
+            .messageEndpoint(MESSAGE_ENDPOINT)
+            .build();
     }
 
     @Bean
@@ -31,13 +39,19 @@ public class McpConfig {
     }
 
     @Bean
-    public McpSyncServer mcpServer(WebMvcSseServerTransportProvider transportProvider, CalculatorService service) {
-        // Tool: sum
+    public McpSyncServer mcpServer(WebMvcSseServerTransportProvider transportProvider, 
+                                    McpJsonMapper jsonMapper, 
+                                    CalculatorService service) {
+        // Tool: sum - using Tool.Builder with JSON schema string
         String sumSchema = """
             {"type":"object","properties":{"a":{"type":"number","description":"First number"},"b":{"type":"number","description":"Second number"}},"required":["a","b"]}
             """;
             
-        var sumTool = new Tool("sum", "Calculate the sum of two numbers", sumSchema);
+        var sumTool = new Tool.Builder()
+            .name("sum")
+            .description("Calculate the sum of two numbers")
+            .inputSchema(jsonMapper, sumSchema)
+            .build();
         
         var sumToolSpec = new McpServerFeatures.SyncToolSpecification(
             sumTool,
@@ -45,20 +59,24 @@ public class McpConfig {
                 double a = ((Number) args.get("a")).doubleValue();
                 double b = ((Number) args.get("b")).doubleValue();
                 double result = service.sum(a, b);
-                // Retourne une ressource embarquée avec mimeType application/json
-                var resource = new EmbeddedResource(
-                    new TextResourceContents("result://sum", "application/json", String.format("{\"value\": %s}", result))
+                // Use TextContent for the result
+                return new CallToolResult(
+                    List.of(new TextContent(String.format("{\"value\": %s}", result))),
+                    false
                 );
-                return new CallToolResult(List.of(resource), false);
             }
         );
 
-        // Tool: subtract
+        // Tool: subtract - using Tool.Builder with JSON schema string
         String subSchema = """
             {"type":"object","properties":{"a":{"type":"number","description":"First number"},"b":{"type":"number","description":"Second number"}},"required":["a","b"]}
             """;
 
-        var subTool = new Tool("subtract", "Calculate the difference between two numbers (a - b)", subSchema);
+        var subTool = new Tool.Builder()
+            .name("subtract")
+            .description("Calculate the difference between two numbers (a - b)")
+            .inputSchema(jsonMapper, subSchema)
+            .build();
         
         var subToolSpec = new McpServerFeatures.SyncToolSpecification(
             subTool,
@@ -66,11 +84,11 @@ public class McpConfig {
                 double a = ((Number) args.get("a")).doubleValue();
                 double b = ((Number) args.get("b")).doubleValue();
                 double result = service.subtract(a, b);
-                // Retourne une ressource embarquée avec mimeType application/json
-                var resource = new EmbeddedResource(
-                    new TextResourceContents("result://subtract", "application/json", String.format("{\"value\": %s}", result))
+                // Use TextContent for the result
+                return new CallToolResult(
+                    List.of(new TextContent(String.format("{\"value\": %s}", result))),
+                    false
                 );
-                return new CallToolResult(List.of(resource), false);
             }
         );
 
@@ -86,4 +104,3 @@ public class McpConfig {
         return server;
     }
 }
-
