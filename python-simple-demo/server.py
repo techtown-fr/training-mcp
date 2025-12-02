@@ -1,8 +1,13 @@
-from mcp.server.fastmcp import FastMCP
-from mcp.server.fastmcp.resources import FileResource, TextResource
-from mcp.server.fastmcp.prompts.base import Message
+from fastmcp import FastMCP
 from pathlib import Path
 import os
+
+# Configuration du serveur
+# Transport: "http" (défaut, recommandé pour production) ou "stdio" (pour l'inspecteur MCP)
+TRANSPORT = os.getenv("MCP_TRANSPORT", "http")
+HOST = os.getenv("MCP_HOST", "0.0.0.0")
+PORT = int(os.getenv("MCP_PORT", "8000"))
+PATH = os.getenv("MCP_PATH", "/mcp")
 
 # 1. Initialisation du serveur "All-in-One"
 mcp = FastMCP("python-simple-demo")
@@ -13,7 +18,7 @@ mcp = FastMCP("python-simple-demo")
 # Aucune implémentation nécessaire - le serveur répond automatiquement aux requêtes ping
 # pour vérifier sa disponibilité et sa latence.
 
-@mcp.tool()
+@mcp.tool
 def health_check() -> dict:
     """Check the health status of the MCP server."""
     return {
@@ -23,7 +28,7 @@ def health_check() -> dict:
         "uptime": "running"
     }
 
-@mcp.tool()
+@mcp.tool
 def get_weather(location: str) -> dict:
     """Get the current weather for a specified location."""
     # Simulation d'un appel API externe
@@ -37,30 +42,26 @@ def get_weather(location: str) -> dict:
 # --- B. RESOURCES (Ressources - Données) ---
 
 # B.1 - Ressources STATIQUES (visibles dans list_resources)
-# Exemple 1: Exposer un fichier README
-readme_path = Path("./README.md").resolve()
-if readme_path.exists():
-    readme_resource = FileResource(
-        uri=f"file://{readme_path.as_posix()}",
-        path=readme_path,
-        name="README du projet",
-        description="Documentation du serveur MCP de démonstration",
-        mime_type="text/markdown",
-        tags={"documentation"}
-    )
-    mcp.add_resource(readme_resource)
+# Exemple 1: Exposer le fichier README
+@mcp.resource("resource://readme")
+def get_readme() -> str:
+    """Documentation du serveur MCP de démonstration."""
+    readme_path = Path("./README.md").resolve()
+    if readme_path.exists():
+        return readme_path.read_text(encoding="utf-8")
+    return "README.md not found"
 
-# Exemple 2: Ressource texte statique
-config_resource = TextResource(
-    uri="resource://config",
-    name="Configuration système",
-    text='{"server": "demo_full_server", "version": "1.0", "mode": "development"}',
-    mime_type="application/json",
-    tags={"config"}
-)
-mcp.add_resource(config_resource)
+# Exemple 2: Ressource JSON de configuration
+@mcp.resource("resource://config")
+def get_config() -> dict:
+    """Configuration système du serveur."""
+    return {
+        "server": "python-simple-demo",
+        "version": "1.0",
+        "mode": "development"
+    }
 
-# B.2 - Resource TEMPLATE (dynamique, ne s'affiche PAS dans la liste)
+# B.2 - Resource TEMPLATE (dynamique)
 # Permet de lire n'importe quel fichier via "file:///{chemin}"
 @mcp.resource("file://{path}")
 def read_file(path: str) -> str:
@@ -75,18 +76,21 @@ def read_file(path: str) -> str:
         return f"Error reading file: {str(e)}"
 
 # --- C. PROMPT (Modèle de conversation) ---
-@mcp.prompt()
-def code_review(language: str) -> list[Message]:
+@mcp.prompt
+def code_review(language: str) -> str:
     """Provide a structured prompt for reviewing code in the given language."""
-    return [
-        Message(
-            content=f"You are a meticulous {language} code reviewer. "
-                   f"Focus on performance, security, and testing standards.\n\n"
-                   f"Please review the following {language} code and suggest improvements:",
-            role="user"
-        )
-    ]
+    return f"""You are a meticulous {language} code reviewer.
+Focus on performance, security, and testing standards.
+
+Please review the following {language} code and suggest improvements:"""
 
 # 3. Point d'entrée pour l'exécution
 if __name__ == "__main__":
-    mcp.run()
+    # Documentation: https://github.com/jlowin/fastmcp
+    if TRANSPORT == "stdio":
+        # Mode STDIO - Pour l'inspecteur MCP et Claude Desktop (subprocess)
+        mcp.run(transport="stdio")
+    else:
+        # Mode HTTP (défaut) - Recommandé pour les déploiements web
+        # Utiliser "sse" pour la compatibilité avec l'inspecteur MCP et non "http"
+        mcp.run(transport="sse", host=HOST, port=PORT, path=PATH)

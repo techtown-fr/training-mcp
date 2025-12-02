@@ -1,6 +1,18 @@
 # Serveur MCP Python - Démo Simple
 
-Ce projet démontre comment créer un serveur MCP (Model Context Protocol) en Python avec FastMCP.
+Ce projet démontre comment créer un serveur MCP (Model Context Protocol) en Python avec [FastMCP](https://github.com/jlowin/fastmcp).
+
+## 🌐 Transport : Streamable HTTP (Recommandé)
+
+Ce serveur utilise le transport **Streamable HTTP**, qui est le transport recommandé pour les déploiements web selon la spécification MCP.
+
+| Transport | Utilisation | Avantages |
+|-----------|-------------|-----------|
+| **Streamable HTTP** ✅ | Déploiements web, production | Multi-clients, HTTP standard, scalable |
+| SSE | Legacy, compatibilité | Support anciens clients |
+| STDIO | Développement local, CLI | Simple, pas de réseau |
+
+> **📝 Référence** : [FastMCP - Running Server Documentation](https://github.com/jlowin/fastmcp)
 
 ## 🎯 Fonctionnalités
 
@@ -49,7 +61,7 @@ Le serveur démontre maintenant **toutes les fonctionnalités principales du pro
 ### Installation des dépendances
 
 ```bash
-pip install mcp
+pip install fastmcp
 ```
 
 Ou avec le fichier requirements.txt :
@@ -60,128 +72,149 @@ pip install -r requirements.txt
 
 ## 🚀 Comment l'utiliser ?
 
-Il y a plusieurs façons de tester ce serveur :
-
-### Option A : Via le Client de Test Python (Nouveau !)
-
-Un script de test complet est fourni pour tester toutes les fonctionnalités MCP via STDIO :
+### Démarrer le serveur HTTP
 
 ```bash
 cd python-simple-demo
-python3 test_server.py
+python3 server.py
 ```
 
-Ce script :
-- Lance automatiquement le serveur comme sous-processus via `StdioTransport`
-- Communique via STDIO (stdin/stdout) - pas besoin de démarrer le serveur séparément
-- Teste tous les **Tools** (`health_check`, `get_weather`)
-- Teste les **Resources** statiques (`README.md`, `resource://config`)
-- Teste les **Prompts** (`code_review`)
+Le serveur démarre sur `http://0.0.0.0:8000/mcp` par défaut.
 
-> **💡 Note** : Le client utilise `fastmcp.Client` avec `StdioTransport` qui spawne le serveur comme sous-processus.
+**Configuration via variables d'environnement :**
 
-**Exemple de sortie :**
-
-```
-============================================================
-🚀 MCP Client Test - python-simple-demo
-============================================================
-📂 Server path: /path/to/server.py
-
-============================================================
-🔧 TESTING TOOLS
-============================================================
-
-📋 Found 2 tool(s):
-   - health_check: Check the health status of the MCP server.
-   - get_weather: Get the current weather for a specified location.
-
->>> Calling health_check tool...
-<<< Result: {"status": "healthy", "server": "python-simple-demo", ...}
-
->>> Calling get_weather tool for 'Paris'...
-<<< Result: {"location": "Paris", "temperature": 72, ...}
-
-============================================================
-📦 TESTING RESOURCES
-============================================================
-
-📋 Found 2 static resource(s):
-   - file:///path/to/README.md: README du projet
-   - resource://config: Configuration système
-
->>> Reading resource://config (TextResource)...
-<<< Content: {"server": "demo_full_server", "version": "1.0", ...}
-
->>> Reading file:///path/to/README.md (FileResource)...
-<<< Content preview: # Serveur MCP Python - Démo Simple...
-
-============================================================
-💬 TESTING PROMPTS
-============================================================
-
-📋 Found 1 prompt(s):
-   - code_review: Provide a structured prompt for reviewing code...
-
->>> Getting code_review prompt for 'Python'...
-<<< Prompt messages:
-    [user]: You are a meticulous Python code reviewer...
-
-============================================================
-✅ ALL TESTS COMPLETED SUCCESSFULLY
-============================================================
-```
-
-### Option B : Via l'Inspecteur MCP (Recommandé pour explorer visuellement)
-
-L'équipe MCP fournit un outil web pour visualiser vos outils sans configurer un client IA complet.
-
-Dans votre terminal :
+| Variable | Défaut | Description |
+|----------|--------|-------------|
+| `MCP_TRANSPORT` | `http` | Transport à utiliser (`http` ou `stdio`) |
+| `MCP_HOST` | `0.0.0.0` | Adresse d'écoute (mode HTTP) |
+| `MCP_PORT` | `8000` | Port HTTP (mode HTTP) |
+| `MCP_PATH` | `/mcp` | Chemin de l'endpoint MCP (mode HTTP) |
 
 ```bash
-# Sur macOS/Linux, utilisez python3
-npx @modelcontextprotocol/inspector python3 server.py
+# Exemple : changer le port
+MCP_PORT=9000 python3 server.py
 
-# Sur Windows ou si 'python' pointe vers Python 3
-npx @modelcontextprotocol/inspector python server.py
+# Exemple : mode STDIO (pour l'inspecteur MCP)
+MCP_TRANSPORT=stdio python3 server.py
 ```
 
-Cela ouvrira une page web où vous pourrez :
-- Cliquer sur **"Ping"** pour vérifier que le serveur répond (ping automatique du protocole MCP)
+### Option A : Connexion via Client Python
+
+```python
+from fastmcp import Client
+
+async def main():
+    # Connexion via Streamable HTTP
+    async with Client("http://127.0.0.1:8000/mcp") as client:
+        # Lister les outils
+        tools = await client.list_tools()
+        print(f"Tools: {tools}")
+        
+        # Appeler un outil
+        result = await client.call_tool("get_weather", {"location": "Paris"})
+        print(f"Result: {result}")
+
+import asyncio
+asyncio.run(main())
+```
+
+### Option B : Via l'Inspecteur MCP (Mode STDIO)
+
+**Méthode classique** - L'inspecteur lance le serveur en mode STDIO :
+
+```bash
+# Lance directement le serveur avec l'inspecteur (mode STDIO)
+MCP_TRANSPORT=stdio npx @modelcontextprotocol/inspector python3 server.py
+```
+
+L'inspecteur s'ouvre automatiquement et vous permet de tester tous les outils, ressources et prompts.
+
+### Option C : Via l'Inspecteur MCP (Mode HTTP)
+
+**Méthode HTTP** - Connexion à un serveur HTTP déjà démarré :
+
+```bash
+# 1. Démarrez le serveur HTTP dans un terminal
+python3 server.py
+
+# 2. Dans un autre terminal, lancez l'inspecteur avec l'URL
+npx @modelcontextprotocol/inspector http://localhost:8000/mcp
+```
+
+Ou via l'interface web :
+1. Lancez `npx @modelcontextprotocol/inspector` sans argument
+2. Sélectionnez **"Streamable HTTP"** comme type de connexion
+3. Entrez l'URL : `http://127.0.0.1:8000/mcp`
+4. Cliquez sur **"Connect"**
+
+> **🐳 Alternative : Lancer l'Inspecteur via Docker**
+> 
+> Si vous ne souhaitez pas utiliser `npx`, vous pouvez lancer l'Inspecteur MCP via Docker :
+> 
+> ```bash
+> docker run --rm --network host -p 6274:6274 -p 6277:6277 ghcr.io/modelcontextprotocol/inspector:latest
+> ```
+> 
+> L'interface sera accessible sur `http://localhost:6274`. Connectez-vous ensuite à votre serveur MCP sur `http://localhost:8000/mcp`.
+> 
+> - **Port 6274** : Interface web de l'Inspecteur
+> - **Port 6277** : Proxy MCP
+> 
+> Voir la [documentation officielle de l'Inspecteur](https://github.com/modelcontextprotocol/inspector) pour plus de détails.
+
+Cela vous permettra de :
+- Cliquer sur **"Ping"** pour vérifier que le serveur répond
 - Cliquer sur **"Tools"** pour tester `health_check` et `get_weather`
-- Cliquer sur **"Resources"** pour voir les ressources statiques (`README.md`, `resource://config`)
-  - Les ressources statiques apparaissent dans la liste avec **"List Resources"**
-  - Le resource template `file://{path}` ne s'affiche pas mais peut être lu directement en fournissant un URI
+- Cliquer sur **"Resources"** pour voir les ressources statiques
 - Cliquer sur **"Prompts"** pour tester `code_review`
 
-### Option C : Dans Claude Desktop
+### Option D : Dans Claude Desktop
 
-Pour l'utiliser directement dans l'application Claude :
+**Emplacement du fichier de configuration :**
+- **macOS** : `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows** : `%APPDATA%/Claude/claude_desktop_config.json`
+- **Linux** : `~/.config/Claude/claude_desktop_config.json`
 
-1. Ouvrez votre fichier de config `claude_desktop_config.json`
-
-   - **macOS** : `~/Library/Application Support/Claude/claude_desktop_config.json`
-   - **Windows** : `%APPDATA%/Claude/claude_desktop_config.json`
-   - **Linux** : `~/.config/Claude/claude_desktop_config.json`
-
-2. Ajoutez votre serveur :
+**Mode STDIO (recommandé pour Claude Desktop)** - Claude lance le serveur :
 
 ```json
 {
   "mcpServers": {
-    "my-demo": {
+    "python-demo": {
       "command": "python3",
-      "args": ["/Users/cubz/git/training-mcp/python-simple-demo/server.py"]
+      "args": ["/chemin/absolu/vers/server.py"],
+      "env": {
+        "MCP_TRANSPORT": "stdio"
+      }
     }
   }
 }
 ```
 
-   **Note** : Remplacez le chemin par le chemin absolu vers votre `server.py`
+**Mode HTTP** - Connexion à un serveur déjà démarré :
 
-3. Redémarrez Claude Desktop
+```json
+{
+  "mcpServers": {
+    "python-demo-http": {
+      "url": "http://127.0.0.1:8000/mcp"
+    }
+  }
+}
+```
 
-4. Vérifiez que le serveur est connecté en regardant l'icône 🔌 dans l'interface
+> **⚠️ Note** : Assurez-vous que le serveur est démarré avant de lancer Claude Desktop.
+
+### Option D : Test avec curl
+
+Vous pouvez tester le serveur directement avec curl :
+
+```bash
+# Test de l'endpoint MCP (initialize)
+curl -X POST http://127.0.0.1:8000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}},"id":1}'
+```
 
 ## 🐳 Utilisation avec Docker
 
@@ -191,117 +224,112 @@ Pour l'utiliser directement dans l'application Claude :
 docker build -t mcp-python-demo .
 ```
 
-### Option A : Tester avec l'Inspecteur MCP via Docker (Recommandé)
-
-L'inspecteur MCP peut lancer directement votre conteneur Docker :
+### Option A : Exécuter le conteneur HTTP
 
 ```bash
-npx @modelcontextprotocol/inspector docker run -i --rm mcp-python-demo
+docker run --rm -p 8000:8000 mcp-python-demo
 ```
 
-**Comment ça marche ?**
-- L'inspecteur exécute la commande `docker run -i --rm mcp-python-demo`
-- Il communique avec le serveur MCP via stdin/stdout
-- L'interface web s'ouvre pour tester tous les outils, ressources et prompts
+Le serveur sera accessible sur `http://localhost:8000/mcp`.
 
-### Option B : Exécuter le conteneur directement
+**Flags Docker importants :**
+- `-p 8000:8000` : Expose le port HTTP du conteneur
+- `--rm` : Nettoie automatiquement le conteneur après l'arrêt
+
+### Option B : Tester avec l'Inspecteur MCP via Docker
 
 ```bash
-docker run --rm -i mcp-python-demo
+# 1. Démarrer le conteneur
+docker run --rm -p 8000:8000 mcp-python-demo
+
+# 2. Dans un autre terminal, lancer l'inspecteur
+npx @modelcontextprotocol/inspector
+# Puis connectez-vous à http://localhost:8000/mcp
 ```
 
-**Notes importantes** : 
-- Le flag `-i` (interactif) est **CRITIQUE** car MCP communique via stdio (stdin/stdout)
-- Le flag `--rm` nettoie automatiquement le conteneur après l'arrêt
-- Sans `-i`, le serveur MCP ne pourra pas recevoir les commandes
+### Option C : Configuration Docker personnalisée
 
-### Option C : Utiliser avec Claude Desktop via Docker
+```bash
+# Changer le port
+docker run --rm -p 9000:9000 -e MCP_PORT=9000 mcp-python-demo
 
-Modifiez votre `claude_desktop_config.json` :
+# Changer le path
+docker run --rm -p 8000:8000 -e MCP_PATH=/api/mcp mcp-python-demo
+```
+
+### Option D : Utiliser avec Claude Desktop via Docker
 
 ```json
 {
   "mcpServers": {
-    "my-demo-docker": {
-      "command": "docker",
-      "args": ["run", "-i", "--rm", "mcp-python-demo"]
+    "python-demo-docker": {
+      "url": "http://localhost:8000/mcp"
     }
   }
 }
 ```
+
+> **⚠️ Important** : Le conteneur doit être démarré avant Claude Desktop.
 
 ## 📝 Exemples d'utilisation
 
 ### Ping (Vérification de disponibilité)
 
 ```python
-# Dans l'inspecteur MCP :
-# Cliquez sur "Ping" pour vérifier que le serveur répond
-# Le ping est géré automatiquement par le protocole MCP
+from fastmcp import Client
 
-# Avec un client Python :
-async with client:
+async with Client("http://127.0.0.1:8000/mcp") as client:
     is_alive = await client.ping()  # Retourne True si le serveur répond
 ```
 
 ### Tool : health_check
 
 ```python
-# Dans l'inspecteur MCP :
-# 1. Allez dans "Tools"
-# 2. Sélectionnez "health_check"
-# 3. Cliquez sur "Call Tool"
-# Résultat : {"status": "healthy", "server": "demo_full_server", ...}
+from fastmcp import Client
 
-# Demandez à Claude :
-"Vérifie l'état de santé du serveur"
+async with Client("http://127.0.0.1:8000/mcp") as client:
+    result = await client.call_tool("health_check", {})
+    # Résultat : {"status": "healthy", "server": "python-simple-demo", ...}
 ```
 
 ### Tool : get_weather
 
 ```python
-# Demandez à Claude :
-"Quel temps fait-il à Paris ?"
+from fastmcp import Client
+
+async with Client("http://127.0.0.1:8000/mcp") as client:
+    result = await client.call_tool("get_weather", {"location": "Paris"})
+    # Résultat : {"location": "Paris", "temperature": 72, ...}
 ```
 
 ### Resources
 
-#### Ressources statiques (visibles dans la liste)
-
 ```python
-# Dans l'inspecteur MCP :
-# 1. Cliquez sur "Resources" > "List Resources"
-# 2. Vous verrez : README.md et resource://config
-# 3. Sélectionnez une ressource et cliquez sur "Read Resource"
+from fastmcp import Client
 
-# Demandez à Claude :
-"Montre-moi le contenu de resource://config"
-"Lis le README du projet"
-```
-
-#### Resource template (dynamique)
-
-```python
-# Le resource template file://{path} ne s'affiche PAS dans la liste
-# mais peut être appelé directement :
-
-# Demandez à Claude :
-"Lis le contenu du fichier via file:///Users/cubz/git/training-mcp/python-simple-demo/server.py"
+async with Client("http://127.0.0.1:8000/mcp") as client:
+    # Lister les ressources statiques
+    resources = await client.list_resources()
+    
+    # Lire une ressource
+    content = await client.read_resource("resource://config")
 ```
 
 ### Prompt : code_review
 
 ```python
-# Demandez à Claude :
-"Utilise le prompt code_review pour Python et analyse ce code : [votre code]"
+from fastmcp import Client
+
+async with Client("http://127.0.0.1:8000/mcp") as client:
+    prompt = await client.get_prompt("code_review", {"language": "Python"})
 ```
 
 ## 🔧 Structure du projet
 
 ```
 python-simple-demo/
-├── server.py           # Code du serveur MCP
-├── test_server.py      # Client de test MCP
+├── server.py           # Code du serveur MCP (Streamable HTTP)
+├── test_server.py      # Client de test MCP (legacy STDIO)
 ├── requirements.txt    # Dépendances Python
 ├── Dockerfile          # Configuration Docker
 ├── AGENTS.md           # Guide pour les agents IA
@@ -310,45 +338,62 @@ python-simple-demo/
 
 ## 🐛 Dépannage
 
-### Erreur : "spawn python ENOENT"
+### Erreur : "Address already in use"
 
-**Problème** : La commande `python` n'est pas trouvée.
-
-**Solution** : Sur macOS/Linux, utilisez `python3` au lieu de `python` :
-
-```bash
-# Vérifiez votre version de Python
-which python3
-python3 --version
-
-# Utilisez python3 dans vos commandes
-npx @modelcontextprotocol/inspector python3 server.py
-```
-
-### Erreur : "No module named 'mcp'"
-
-**Problème** : Le package MCP n'est pas installé.
+**Problème** : Le port 8000 est déjà utilisé.
 
 **Solution** :
 
 ```bash
-pip3 install mcp
+# Changer le port
+MCP_PORT=9000 python3 server.py
+
+# Ou trouver et arrêter le processus utilisant le port
+lsof -i :8000
+kill <PID>
+```
+
+### Erreur : "No module named 'fastmcp'"
+
+**Problème** : Le package FastMCP n'est pas installé.
+
+**Solution** :
+
+```bash
+pip3 install fastmcp
 # ou
 pip3 install -r requirements.txt
 ```
 
-### Le serveur ne répond pas dans Claude Desktop
+### Le serveur ne répond pas
 
 **Solutions** :
 
-1. Vérifiez que le chemin dans `claude_desktop_config.json` est **absolu**
-2. Vérifiez les logs de Claude Desktop
-3. Redémarrez complètement Claude Desktop
-4. Assurez-vous d'utiliser `python3` dans la commande
+1. Vérifiez que le serveur est bien démarré avec `python3 server.py`
+2. Vérifiez l'URL (par défaut : `http://127.0.0.1:8000/mcp`)
+3. Testez avec curl :
+   ```bash
+   curl http://127.0.0.1:8000/mcp
+   ```
+4. Vérifiez les logs du serveur pour les erreurs
+
+### Connexion refusée depuis Docker
+
+**Problème** : Le client ne peut pas se connecter au serveur dans Docker.
+
+**Solution** :
+
+```bash
+# Assurez-vous d'exposer le port
+docker run --rm -p 8000:8000 mcp-python-demo
+
+# Utilisez localhost ou 127.0.0.1 depuis l'hôte
+curl http://localhost:8000/mcp
+```
 
 ## 📚 Ressources
 
 - [Documentation MCP officielle](https://modelcontextprotocol.io)
-- [FastMCP sur GitHub](https://github.com/modelcontextprotocol/python-sdk)
+- [FastMCP sur GitHub (jlowin)](https://github.com/jlowin/fastmcp)
 - [Spécification du protocole](https://spec.modelcontextprotocol.io)
-
+- [FastMCP Documentation](https://gofastmcp.com)

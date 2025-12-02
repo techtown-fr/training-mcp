@@ -1,9 +1,12 @@
 # Utiliser une image Python légère
 FROM python:3.11-slim
 
-# IMPORTANT : Empêcher Python de mettre en cache les sorties (buffering)
-# C'est CRITIQUE pour que le protocole MCP (basé sur stdio) fonctionne via Docker
+# Variables d'environnement
 ENV PYTHONUNBUFFERED=1
+ENV MCP_TRANSPORT=http
+ENV MCP_HOST=0.0.0.0
+ENV MCP_PORT=8000
+ENV MCP_PATH=/mcp
 
 # Définir le répertoire de travail
 WORKDIR /app
@@ -19,6 +22,9 @@ COPY server.py .
 RUN useradd -m appuser && chown -R appuser /app
 USER appuser
 
-# Commande de lancement
+# Exposer le port HTTP pour Streamable HTTP transport
+EXPOSE 8000
+
+# Commande de lancement - Serveur HTTP MCP
 CMD ["python", "server.py"]
 

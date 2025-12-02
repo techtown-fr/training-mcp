@@ -11,6 +11,7 @@ Usage:
 """
 
 import asyncio
+import os
 import sys
 from pathlib import Path
 
@@ -34,10 +35,15 @@ async def test_server():
     # Note: Use "python3" on macOS/Linux, "python" on Windows
     python_cmd = "python3" if sys.platform != "win32" else "python"
     
+    # Set MCP_TRANSPORT=stdio to ensure the server runs in STDIO mode
+    env = os.environ.copy()
+    env["MCP_TRANSPORT"] = "stdio"
+    
     transport = StdioTransport(
         command=python_cmd,
         args=[str(server_path)],
-        cwd=str(server_path.parent)  # Set working directory to server's folder
+        cwd=str(server_path.parent),  # Set working directory to server's folder
+        env=env  # Force STDIO transport mode
     )
     
     async with Client(transport) as client:
