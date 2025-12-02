@@ -5,7 +5,7 @@ from pathlib import Path
 import os
 
 # 1. Initialisation du serveur "All-in-One"
-mcp = FastMCP("demo_full_server")
+mcp = FastMCP("python-simple-demo")
 
 # --- A. TOOLS (Outils - Actions) ---
 
@@ -18,7 +18,7 @@ def health_check() -> dict:
     """Check the health status of the MCP server."""
     return {
         "status": "healthy",
-        "server": "demo_full_server",
+        "server": "python-simple-demo",
         "version": "1.0",
         "uptime": "running"
     }
