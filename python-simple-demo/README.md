@@ -60,9 +60,79 @@ pip install -r requirements.txt
 
 ## 🚀 Comment l'utiliser ?
 
-Il y a deux façons principales de tester ce serveur :
+Il y a plusieurs façons de tester ce serveur :
 
-### Option A : Via l'Inspecteur MCP (Recommandé pour tester)
+### Option A : Via le Client de Test Python (Nouveau !)
+
+Un script de test complet est fourni pour tester toutes les fonctionnalités MCP via STDIO :
+
+```bash
+cd python-simple-demo
+python3 test_server.py
+```
+
+Ce script :
+- Lance automatiquement le serveur comme sous-processus via `StdioTransport`
+- Communique via STDIO (stdin/stdout) - pas besoin de démarrer le serveur séparément
+- Teste tous les **Tools** (`health_check`, `get_weather`)
+- Teste les **Resources** statiques (`README.md`, `resource://config`)
+- Teste les **Prompts** (`code_review`)
+
+> **💡 Note** : Le client utilise `fastmcp.Client` avec `StdioTransport` qui spawne le serveur comme sous-processus.
+
+**Exemple de sortie :**
+
+```
+============================================================
+🚀 MCP Client Test - python-simple-demo
+============================================================
+📂 Server path: /path/to/server.py
+
+============================================================
+🔧 TESTING TOOLS
+============================================================
+
+📋 Found 2 tool(s):
+   - health_check: Check the health status of the MCP server.
+   - get_weather: Get the current weather for a specified location.
+
+>>> Calling health_check tool...
+<<< Result: {"status": "healthy", "server": "python-simple-demo", ...}
+
+>>> Calling get_weather tool for 'Paris'...
+<<< Result: {"location": "Paris", "temperature": 72, ...}
+
+============================================================
+📦 TESTING RESOURCES
+============================================================
+
+📋 Found 2 static resource(s):
+   - file:///path/to/README.md: README du projet
+   - resource://config: Configuration système
+
+>>> Reading resource://config (TextResource)...
+<<< Content: {"server": "demo_full_server", "version": "1.0", ...}
+
+>>> Reading file:///path/to/README.md (FileResource)...
+<<< Content preview: # Serveur MCP Python - Démo Simple...
+
+============================================================
+💬 TESTING PROMPTS
+============================================================
+
+📋 Found 1 prompt(s):
+   - code_review: Provide a structured prompt for reviewing code...
+
+>>> Getting code_review prompt for 'Python'...
+<<< Prompt messages:
+    [user]: You are a meticulous Python code reviewer...
+
+============================================================
+✅ ALL TESTS COMPLETED SUCCESSFULLY
+============================================================
+```
+
+### Option B : Via l'Inspecteur MCP (Recommandé pour explorer visuellement)
 
 L'équipe MCP fournit un outil web pour visualiser vos outils sans configurer un client IA complet.
 
@@ -84,7 +154,7 @@ Cela ouvrira une page web où vous pourrez :
   - Le resource template `file://{path}` ne s'affiche pas mais peut être lu directement en fournissant un URI
 - Cliquer sur **"Prompts"** pour tester `code_review`
 
-### Option B : Dans Claude Desktop
+### Option C : Dans Claude Desktop
 
 Pour l'utiliser directement dans l'application Claude :
 
@@ -231,9 +301,11 @@ async with client:
 ```
 python-simple-demo/
 ├── server.py           # Code du serveur MCP
+├── test_server.py      # Client de test MCP
 ├── requirements.txt    # Dépendances Python
 ├── Dockerfile          # Configuration Docker
-└── README.md          # Cette documentation
+├── AGENTS.md           # Guide pour les agents IA
+└── README.md           # Cette documentation
 ```
 
 ## 🐛 Dépannage
