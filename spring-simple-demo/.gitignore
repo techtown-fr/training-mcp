@@ -1,0 +1,27 @@
+# Maven
+target/
+
+# MCP diagnostic logs
+mcp-stdout.log
+mcp-stderr.log
+mcp-*.log
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+.project
+.classpath
+.settings/
+.vscode/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env / secrets
+.env
+.env.*
