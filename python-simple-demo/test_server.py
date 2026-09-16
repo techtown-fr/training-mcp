@@ -31,9 +31,8 @@ async def test_server():
     print(f"📂 Server path: {server_path}")
     print()
     
-    # Create STDIO transport to spawn server as subprocess
-    # Note: Use "python3" on macOS/Linux, "python" on Windows
-    python_cmd = "python3" if sys.platform != "win32" else "python"
+    # Reuse the same interpreter so the venv's FastMCP is available
+    python_cmd = sys.executable
     
     # Set MCP_TRANSPORT=stdio to ensure the server runs in STDIO mode
     env = os.environ.copy()

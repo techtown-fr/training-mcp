@@ -1,6 +1,6 @@
 # Serveur MCP Python - Démo Simple
 
-Ce projet démontre comment créer un serveur MCP (Model Context Protocol) en Python avec [FastMCP](https://github.com/jlowin/fastmcp).
+Ce projet démontre comment créer un serveur MCP (Model Context Protocol) en Python avec [FastMCP 4](https://github.com/jlowin/fastmcp), compatible **MCP 2026-07-28**.
 
 ## 🌐 Transport : Streamable HTTP (Recommandé)
 
@@ -31,21 +31,19 @@ Le serveur expose les fonctionnalités MCP suivantes :
 ### 💬 Prompts (Modèles de conversation)
 - **`code_review`** - Fournit un template pour la revue de code dans un langage donné
 
-### 🏓 Ping (Vérification de disponibilité)
-- **Géré automatiquement** par le protocole MCP - aucune implémentation nécessaire
-- Permet de vérifier que le serveur est actif et mesurer la latence
+### 🔍 Découverte (`server/discover`)
+- Obligatoire dans MCP **2026-07-28** : plus de handshake `initialize` pour les clients modernes
+- FastMCP 4 le fournit automatiquement et négocie aussi les clients legacy
 
-> **💡 Notes importantes** : 
+> **💡 Notes importantes** :
 > - Les ressources statiques apparaissent dans `list_resources()`, tandis que le resource template `file://{path}` ne s'affiche pas dans la liste mais peut être appelé directement
-> - Le ping est une fonctionnalité native du protocole MCP, gérée automatiquement par FastMCP
+> - FastMCP 4 est dual-era : clients 2026-07-28 (sessionless) et clients plus anciens (initialize)
 
-## ✅ Résumé des fonctionnalités MCP complètes
-
-Le serveur démontre maintenant **toutes les fonctionnalités principales du protocole MCP** :
+## ✅ Résumé des fonctionnalités MCP
 
 | Fonctionnalité | Implémentation | Status |
 |----------------|----------------|--------|
-| **Ping** | Automatique (protocole MCP) | ✅ Actif |
+| **Discover** | Automatique (`server/discover`) | ✅ Actif |
 | **Tools** | `health_check`, `get_weather` | ✅ 2 outils |
 | **Resources** | Statiques + Template | ✅ 2 statiques + 1 template |
 | **Prompts** | `code_review` | ✅ 1 prompt |
@@ -61,14 +59,10 @@ Le serveur démontre maintenant **toutes les fonctionnalités principales du pro
 ### Installation des dépendances
 
 ```bash
-pip install fastmcp
-```
-
-Ou avec le fichier requirements.txt :
-
-```bash
 pip install -r requirements.txt
 ```
+
+Dépendance épinglée : `fastmcp==4.0.2`.
 
 ## 🚀 Comment l'utiliser ?
 
@@ -124,7 +118,13 @@ asyncio.run(main())
 
 ```bash
 # Lance directement le serveur avec l'inspecteur (mode STDIO)
-MCP_TRANSPORT=stdio npx @modelcontextprotocol/inspector python3 server.py
+npx --yes @modelcontextprotocol/inspector@2 -e MCP_TRANSPORT=stdio python3 server.py
+```
+
+Liste des outils en CLI :
+
+```bash
+npx --yes @modelcontextprotocol/inspector@2 --cli python3 server.py --method tools/list -e MCP_TRANSPORT=stdio
 ```
 
 L'inspecteur s'ouvre automatiquement et vous permet de tester tous les outils, ressources et prompts.
@@ -138,11 +138,17 @@ L'inspecteur s'ouvre automatiquement et vous permet de tester tous les outils, r
 python3 server.py
 
 # 2. Dans un autre terminal, lancez l'inspecteur avec l'URL
-npx @modelcontextprotocol/inspector http://localhost:8000/mcp
+npx --yes @modelcontextprotocol/inspector@2 http://localhost:8000/mcp
+```
+
+Liste des outils en CLI :
+
+```bash
+npx --yes @modelcontextprotocol/inspector@2 --cli http://localhost:8000/mcp --transport http --method tools/list
 ```
 
 Ou via l'interface web :
-1. Lancez `npx @modelcontextprotocol/inspector` sans argument
+1. Lancez `npx --yes @modelcontextprotocol/inspector@2` sans argument
 2. Sélectionnez **"Streamable HTTP"** comme type de connexion
 3. Entrez l'URL : `http://127.0.0.1:8000/mcp`
 4. Cliquez sur **"Connect"**
@@ -163,7 +169,6 @@ Ou via l'interface web :
 > Voir la [documentation officielle de l'Inspecteur](https://github.com/modelcontextprotocol/inspector) pour plus de détails.
 
 Cela vous permettra de :
-- Cliquer sur **"Ping"** pour vérifier que le serveur répond
 - Cliquer sur **"Tools"** pour tester `health_check` et `get_weather`
 - Cliquer sur **"Resources"** pour voir les ressources statiques
 - Cliquer sur **"Prompts"** pour tester `code_review`
@@ -205,15 +210,28 @@ Cela vous permettra de :
 
 > **⚠️ Note** : Assurez-vous que le serveur est démarré avant de lancer Claude Desktop.
 
-### Option D : Test avec curl
+### Option E : Test avec curl (`server/discover`)
 
-Vous pouvez tester le serveur directement avec curl :
+MCP 2026-07-28 n'utilise plus `initialize`. Un smoke test moderne :
 
 ```bash
-# Test de l'endpoint MCP (initialize)
-curl -X POST http://127.0.0.1:8000/mcp \
+curl -s http://127.0.0.1:8000/mcp \
+  -X POST \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}},"id":1}'
+  -H "Accept: application/json, text/event-stream" \
+  -H "MCP-Protocol-Version: 2026-07-28" \
+  -H "Mcp-Method: server/discover" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "server/discover",
+    "params": {
+      "_meta": {
+        "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+        "io.modelcontextprotocol/clientCapabilities": {}
+      }
+    }
+  }'
 ```
 
 ## 🐳 Utilisation avec Docker
@@ -243,7 +261,7 @@ Le serveur sera accessible sur `http://localhost:8000/mcp`.
 docker run --rm -p 8000:8000 mcp-python-demo
 
 # 2. Dans un autre terminal, lancer l'inspecteur
-npx @modelcontextprotocol/inspector
+npx --yes @modelcontextprotocol/inspector@2
 # Puis connectez-vous à http://localhost:8000/mcp
 ```
 
@@ -273,13 +291,13 @@ docker run --rm -p 8000:8000 -e MCP_PATH=/api/mcp mcp-python-demo
 
 ## 📝 Exemples d'utilisation
 
-### Ping (Vérification de disponibilité)
+### Health check
 
 ```python
 from fastmcp import Client
 
 async with Client("http://127.0.0.1:8000/mcp") as client:
-    is_alive = await client.ping()  # Retourne True si le serveur répond
+    result = await client.call_tool("health_check", {})
 ```
 
 ### Tool : health_check
@@ -329,7 +347,7 @@ async with Client("http://127.0.0.1:8000/mcp") as client:
 ```
 python-simple-demo/
 ├── server.py           # Code du serveur MCP (Streamable HTTP)
-├── test_server.py      # Client de test MCP (legacy STDIO)
+├── test_server.py      # Client de test MCP (STDIO)
 ├── requirements.txt    # Dépendances Python
 ├── Dockerfile          # Configuration Docker
 ├── AGENTS.md           # Guide pour les agents IA
@@ -360,8 +378,6 @@ kill <PID>
 **Solution** :
 
 ```bash
-pip3 install fastmcp
-# ou
 pip3 install -r requirements.txt
 ```
 
