@@ -14,9 +14,8 @@ mcp = FastMCP("python-simple-demo")
 
 # --- A. TOOLS (Outils - Actions) ---
 
-# Note: Le PING est géré AUTOMATIQUEMENT par le protocole MCP
-# Aucune implémentation nécessaire - le serveur répond automatiquement aux requêtes ping
-# pour vérifier sa disponibilité et sa latence.
+# Note: FastMCP 4 négocie MCP 2026-07-28 (sessionless) avec les clients modernes
+# et reste compatible avec les clients legacy (initialize).
 
 @mcp.tool
 def health_check() -> dict:
@@ -91,6 +90,5 @@ if __name__ == "__main__":
         # Mode STDIO - Pour l'inspecteur MCP et Claude Desktop (subprocess)
         mcp.run(transport="stdio")
     else:
-        # Mode HTTP (défaut) - Recommandé pour les déploiements web
-        # Utiliser "sse" pour la compatibilité avec l'inspecteur MCP et non "http"
-        mcp.run(transport="sse", host=HOST, port=PORT, path=PATH)
+        # Mode HTTP (défaut) — Streamable HTTP, transport recommandé par MCP 2026-07-28
+        mcp.run(transport="http", host=HOST, port=PORT, path=PATH)

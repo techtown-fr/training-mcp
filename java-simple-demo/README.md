@@ -1,14 +1,18 @@
 # MCP Server Demo
 
-This is a simple MCP server implemented in Java using Spring Boot and the Model Context Protocol SDK.
-It exposes two tools: `sum` and `subtract`.
+Serveur MCP Java bas niveau : Spring Boot 4.1.1 + MCP Java SDK 2.0.1 + transport Spring AI WebMVC.
+
+Il expose deux outils : `sum` et `subtract`.
 
 ## Technical Details
 
-- **MCP SDK Version**: 0.16.0
-- **Java Version**: 21
-- **Spring Boot Version**: 3.4.0
-- **Transport**: Server-Sent Events (SSE) via WebMVC
+- **MCP Java SDK**: 2.0.1 (révision protocolaire maximale : **2025-11-25**)
+- **Spring Boot**: 4.1.1
+- **Transport WebMVC**: `org.springframework.ai:mcp-spring-webmvc` 2.0.1
+- **Transport**: Streamable HTTP stateless (`POST /mcp`)
+- **Java**: 21
+
+> Le SDK Java stable ne parle pas encore **2026-07-28**. Les clients modernes négocient `2025-11-25` (handshake `initialize` encore requis).
 
 ## Prerequisites
 
@@ -18,8 +22,6 @@ It exposes two tools: `sum` and `subtract`.
 ## Build and Run
 
 ### With Docker (Recommended)
-
-Docker handles all dependencies including Maven and Java:
 
 ```bash
 docker build -t mcp-server-demo .
@@ -33,161 +35,55 @@ mvn clean package
 java -jar target/mcp-server-demo-0.0.1-SNAPSHOT.jar
 ```
 
-The server will start on port 8080.
+The server starts on port 8080. Endpoint MCP : `http://localhost:8080/mcp`.
 
-## Usage
+## MCP Inspector
 
-The process of calling an MCP server over HTTP/SSE is:
-
-1. Obtain an MCP session token
-2. Initialize the session
-3. Make calls to the MCP server
-
-### Obtain an MCP session token
-
-First open a new terminal session, and run the following command:
+UI :
 
 ```bash
-export MCP_SERVER="http://localhost:8080"
-curl "${MCP_SERVER}/sse"
+npx --yes @modelcontextprotocol/inspector@2 --transport http --server-url http://localhost:8080/mcp
 ```
 
-You should get a result like this:
-
-```
-event: endpoint
-data: http://localhost:8080/messages?sessionId=...
-```
-
-The curl program instead of exiting immediately, will instead keep running (SSE stream). **Do not terminate the running curl program!**
-
-### Initialize MCP session
-
-Run the following commands in another terminal session/window. Replace `MCP_ENDPOINT` with the full URL returned in the `data` field above (including the `sessionId`).
+Liste des outils en CLI :
 
 ```bash
-export MCP_ENDPOINT="http://localhost:8080/messages?sessionId=YOUR_SESSION_ID"
-
-curl -X POST "${MCP_ENDPOINT}" -H "Content-Type: application/json" -d '{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "initialize",
-  "params": {
-    "protocolVersion": "2025-06-18",
-    "clientInfo": {
-        "name": "mcp-client",
-        "version": "1.0.0"
-    }
-  }
-}'
+npx --yes @modelcontextprotocol/inspector@2 --cli http://localhost:8080/mcp --transport http --method tools/list
 ```
 
-You should see a response with `serverInfo` and `capabilities`.
-
-### Send initialized notification (REQUIRED!)
-
-After receiving the initialize response, you **must** send the `initialized` notification before using other MCP methods:
+Appel d'un outil :
 
 ```bash
-curl -X POST "${MCP_ENDPOINT}" -H "Content-Type: application/json" -d '{
-  "jsonrpc": "2.0",
-  "method": "notifications/initialized"
-}'
+npx --yes @modelcontextprotocol/inspector@2 --cli http://localhost:8080/mcp --transport http \
+  --method tools/call --tool-name sum --tool-args-json '{"a":10,"b":5}'
 ```
 
-This notification tells the server that the client is ready to receive requests.
-
-### List MCP tools
-
-To obtain a list of tools:
+Ou lancez le script :
 
 ```bash
-curl -X POST "${MCP_ENDPOINT}" -H "Content-Type: application/json" -d '{
-  "jsonrpc": "2.0",
-  "id": 2,
-  "method": "tools/list"
-}'
+./call_mcp.sh
 ```
 
-You should see `sum` and `subtract` tools.
+## Usage manuel (legacy 2025-11-25)
 
-### Calling MCP tools
-
-#### Call `sum`
+Le SDK Java 2.0.1 reste en ère `initialize`. Exemple :
 
 ```bash
-curl -X POST "${MCP_ENDPOINT}" -H "Content-Type: application/json" -d '{
+export MCP_ENDPOINT="http://localhost:8080/mcp"
+
+curl -X POST "${MCP_ENDPOINT}" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{
     "jsonrpc": "2.0",
-    "id": 3,
-    "method": "tools/call",
+    "id": 1,
+    "method": "initialize",
     "params": {
-        "name": "sum",
-        "arguments": {
-            "a": 10,
-            "b": 5
-        }
+      "protocolVersion": "2025-11-25",
+      "capabilities": {},
+      "clientInfo": { "name": "mcp-client", "version": "1.0.0" }
     }
-}'
+  }'
 ```
 
-Response:
-```json
-{
-    "jsonrpc": "2.0",
-    "id": 3,
-    "result": {
-        "content": [
-            {
-                "type": "text",
-                "text": "15.0"
-            }
-        ],
-        "isError": false
-    }
-}
-```
-
-#### Call `subtract`
-
-```bash
-curl -X POST "${MCP_ENDPOINT}" -H "Content-Type: application/json" -d '{
-    "jsonrpc": "2.0",
-    "id": 4,
-    "method": "tools/call",
-    "params": {
-        "name": "subtract",
-        "arguments": {
-            "a": 10,
-            "b": 5
-        }
-    }
-}'
-```
-
-Response:
-```json
-{
-    "jsonrpc": "2.0",
-    "id": 4,
-    "result": {
-        "content": [
-            {
-                "type": "text",
-                "text": "5.0"
-            }
-        ],
-        "isError": false
-    }
-}
-```
-
-### MCP Ping
-
-```bash
-curl -X POST "${MCP_ENDPOINT}" -H "Content-Type: application/json" -d '{
-  "jsonrpc": "2.0",
-  "id": 5,
-  "method": "ping"
-}'
-```
-
+Puis `notifications/initialized`, `tools/list` et `tools/call` sur le même endpoint.

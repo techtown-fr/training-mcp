@@ -2,25 +2,25 @@
 
 ## Vue d'ensemble du projet
 
-Ce projet est un serveur MCP (Model Context Protocol) démonstratif implémenté en Python avec FastMCP. Il expose trois types de fonctionnalités MCP : un outil météo (`get_weather`), des ressources (statiques et dynamiques), et un prompt de revue de code (`code_review`).
+Ce projet est un serveur MCP démonstratif en Python avec **FastMCP 4**. Il expose `health_check`, `get_weather`, des ressources (statiques et dynamiques) et le prompt `code_review`. Révision cible : **2026-07-28**.
 
 ## Versions des programmes
 
 ### Environnement de développement
 - **Python**: 3.11+ (minimum recommandé)
 - **pip**: Version fournie avec Python 3.11+
-- **Node.js/npx**: Pour l'inspecteur MCP (`@modelcontextprotocol/inspector`)
+- **Node.js/npx**: Pour l'inspecteur MCP (`@modelcontextprotocol/inspector@2`)
 - **Docker**: Compatible avec l'image `python:3.11-slim`
 
 ### Dépendances principales
-- **mcp**: Package FastMCP du SDK Python officiel MCP
-  - Installation: `pip install mcp`
-  - Fournit: `FastMCP`, `FileResource`, `TextResource`, `Message`, etc.
+- **fastmcp==4.0.2**: Framework FastMCP 4
+  - Installation: `pip install -r requirements.txt`
+  - Fournit: `FastMCP`, `Client`, transports STDIO / Streamable HTTP
 
 ### Protocole MCP
-- **Communication**: STDIO (stdin/stdout)
-- **Framework**: FastMCP (couche d'abstraction au-dessus du SDK MCP bas niveau)
-- **Spécification**: Compatible avec le protocole MCP officiel
+- **Révision**: 2026-07-28 (sessionless) avec compatibilité legacy
+- **Communication**: Streamable HTTP (`/mcp`) par défaut, STDIO en option
+- **Framework**: FastMCP 4 (négociation dual-era automatique)
 
 ### Configuration Docker
 - **Image de base**: `python:3.11-slim`
@@ -43,25 +43,18 @@ Ce projet est un serveur MCP (Model Context Protocol) démonstratif implémenté
 
 **Tool (Outil):**
 ```python
-@mcp.tool()
+@mcp.tool
 def nom_fonction(param: type) -> type_retour:
     """Description claire de ce que fait l'outil."""
-    # Logique métier
     return resultat
 ```
 
 **Ressource statique:**
 ```python
-from mcp.server.fastmcp.resources import TextResource, FileResource
-
-resource = TextResource(
-    uri="resource://nom-unique",
-    name="Nom affiché",
-    text="Contenu de la ressource",
-    mime_type="text/plain",
-    tags={"categorie"}
-)
-mcp.add_resource(resource)
+@mcp.resource("resource://nom-unique")
+def get_resource() -> dict:
+    """Description de la ressource."""
+    return {"key": "value"}
 ```
 
 **Ressource dynamique (template):**
@@ -69,21 +62,15 @@ mcp.add_resource(resource)
 @mcp.resource("pattern://{param}")
 def handler_resource(param: str) -> str:
     """Description de la ressource dynamique."""
-    # Logique pour générer/récupérer la ressource
     return contenu
 ```
 
 **Prompt:**
 ```python
-from mcp.server.fastmcp.prompts.base import Message
-
-@mcp.prompt()
-def nom_prompt(param: str) -> list[Message]:
+@mcp.prompt
+def nom_prompt(param: str) -> str:
     """Description du prompt."""
-    return [
-        Message(content="...", role="system"),
-        Message(content="...", role="user")
-    ]
+    return f"Contexte pour {param}"
 ```
 
 ### 2. Gestion des dépendances
@@ -96,7 +83,7 @@ def nom_prompt(param: str) -> list[Message]:
 
 **Format requirements.txt:**
 ```txt
-mcp>=0.9.0
+fastmcp==4.0.2
 nouvelle-dependance==1.2.3
 ```
 
@@ -111,21 +98,23 @@ nouvelle-dependance==1.2.3
 
 1. **Avec l'inspecteur MCP (Recommandé):**
 ```bash
-npx @modelcontextprotocol/inspector python3 server.py
+npx --yes @modelcontextprotocol/inspector@2 -e MCP_TRANSPORT=stdio python3 server.py
+npx --yes @modelcontextprotocol/inspector@2 --cli python3 server.py --method tools/list -e MCP_TRANSPORT=stdio
 ```
 - Tester chaque tool dans l'onglet "Tools"
 - Vérifier les ressources dans "Resources" > "List Resources"
 - Tester les prompts dans "Prompts"
 
-2. **Avec Claude Desktop:**
-- Configurer `claude_desktop_config.json`
-- Vérifier l'icône 🔌 de connexion
-- Tester les interactions via le chat
+2. **Client de test local:**
+```bash
+python3 test_server.py
+```
 
 3. **Exécution directe:**
 ```bash
 python3 server.py
-# Le serveur attend des entrées JSON-RPC sur stdin
+# Défaut: Streamable HTTP sur http://0.0.0.0:8000/mcp
+MCP_TRANSPORT=stdio python3 server.py
 ```
 
 **Tests de régression:**
@@ -365,15 +354,19 @@ mcp.tool()(get_weather)  # Enregistre le tool
 # Installation
 pip install -r requirements.txt
 
-# Exécution locale
+# Exécution locale (HTTP)
 python3 server.py
 
-# Test avec inspecteur
-npx @modelcontextprotocol/inspector python3 server.py
+# Tests
+python3 test_server.py
 
-# Docker
+# Inspecteur STDIO
+npx --yes @modelcontextprotocol/inspector@2 -e MCP_TRANSPORT=stdio python3 server.py
+npx --yes @modelcontextprotocol/inspector@2 --cli python3 server.py --method tools/list -e MCP_TRANSPORT=stdio
+
+# Docker (HTTP)
 docker build -t mcp-python-demo .
-docker run --rm -i mcp-python-demo
+docker run --rm -p 8000:8000 mcp-python-demo
 
 # Formatage (optionnel)
 pip install black isort
@@ -510,9 +503,8 @@ def code_review_detailed(language: str, focus: str = "all") -> list[Message]:
 ## Ressources
 
 - [Documentation MCP officielle](https://modelcontextprotocol.io)
-- [SDK Python MCP sur GitHub](https://github.com/modelcontextprotocol/python-sdk)
-- [Spécification du protocole MCP](https://spec.modelcontextprotocol.io)
-- [FastMCP Documentation](https://github.com/modelcontextprotocol/python-sdk/tree/main/src/mcp/server/fastmcp)
+- [FastMCP 4](https://gofastmcp.com)
+- [Spécification MCP 2026-07-28](https://modelcontextprotocol.io/specification/2026-07-28)
 - [PEP 8 - Style Guide for Python](https://peps.python.org/pep-0008/)
 
 ## Dépannage rapide
@@ -520,7 +512,7 @@ def code_review_detailed(language: str, focus: str = "all") -> list[Message]:
 | Problème | Solution |
 |----------|----------|
 | `spawn python ENOENT` | Utiliser `python3` au lieu de `python` |
-| `No module named 'mcp'` | `pip install mcp` |
+| `No module named 'fastmcp'` | `pip install -r requirements.txt` |
 | Serveur ne répond pas dans Claude | Vérifier chemin absolu dans config |
 | Docker ne communique pas | Ajouter flag `-i` à `docker run` |
 | Buffering des messages | Définir `PYTHONUNBUFFERED=1` |
@@ -529,6 +521,6 @@ def code_review_detailed(language: str, focus: str = "all") -> list[Message]:
 ---
 
 **Date de création**: Décembre 2024  
-**Version du guide**: 1.0  
-**Dernière mise à jour**: Compatible avec FastMCP SDK Python
+**Version du guide**: 2.0  
+**Dernière mise à jour**: FastMCP 4.0.2 / MCP 2026-07-28
 

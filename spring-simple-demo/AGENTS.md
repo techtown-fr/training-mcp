@@ -2,7 +2,8 @@
 
 ## Vue d'ensemble
 
-Serveur MCP métier **GéoCalc** en Java : Spring Boot **4.1** + Spring AI **2.0**, transport **STDIO**.
+Serveur MCP métier **GéoCalc** en Java : Spring Boot **4.1.1** + Spring AI **2.0.1**, transport **STDIO**.
+Le SDK Java sous-jacent parle au maximum **MCP 2025-11-25** (pas encore 2026-07-28).
 Il expose trois outils (`list_shapes`, `get_formula`, `validate_calculation`) pour piloter / valider le calcul de formes géométriques.
 
 Package racine : `fr.techtown.geocalc.mcp`
@@ -13,10 +14,12 @@ Package racine : `fr.techtown.geocalc.mcp`
 |-----------|---------|
 | Java | 21+ (`java.version` dans le POM) |
 | Maven | 3.9+ |
-| Spring Boot | 4.1.0 |
-| Spring AI | 2.0.0 (`spring-ai-bom`) |
+| Spring Boot | 4.1.1 |
+| Spring AI | 2.0.1 (`spring-ai-bom`) |
+| MCP Java SDK | 2.0.1 (`mcp-bom`, override du transitif 2.0.0) |
 | Starter MCP | `org.springframework.ai:spring-ai-starter-mcp-server` |
 | Transport | STDIO (`spring.ai.mcp.server.stdio=true`) |
+| Révision MCP | 2025-11-25 (limite du SDK Java stable) |
 
 Ne pas réintroduire `org.springframework.experimental` ni l'ancien artefact `spring-ai-mcp`.
 
@@ -28,6 +31,7 @@ Ne pas réintroduire `org.springframework.experimental` ni l'ancien artefact `sp
 | `ShapeCatalog.java` | Métier : formes, formules, validation |
 | `GeoCalcTools.java` | Bean `@Component` exposant les outils via `@McpTool` |
 | `application.properties` | Config serveur MCP + STDIO |
+| `run-stdio.sh` | Wrapper de lancement JAR pour Inspector 2 |
 | `logback-spring.xml` | Logs sur **stderr** uniquement |
 | `ShapeCatalogTest.java` | Tests unitaires du catalogue |
 
@@ -76,8 +80,8 @@ java -jar target/geocalc-mcp-server.jar 1>mcp-stdout.log 2>mcp-stderr.log
 Inspector :
 
 ```bash
-npm exec --yes -- @modelcontextprotocol/inspector java -jar target/geocalc-mcp-server.jar
-npm exec --yes -- @modelcontextprotocol/inspector --cli java -jar target/geocalc-mcp-server.jar --method tools/list
+npx --yes @modelcontextprotocol/inspector@2 ./run-stdio.sh
+npx --yes @modelcontextprotocol/inspector@2 --cli ./run-stdio.sh --method tools/list
 ```
 
 Si le miroir Maven entreprise est injoignable, utiliser un `settings.xml` pointant vers Maven Central (`mvn -s …`).

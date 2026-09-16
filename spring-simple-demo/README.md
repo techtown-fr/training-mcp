@@ -1,6 +1,8 @@
 # Spring Simple Demo — Serveur MCP GéoCalc
 
-Serveur MCP métier GéoCalc en **Spring Boot 4.1** + **Spring AI 2.0**, transport **STDIO**.
+Serveur MCP métier GéoCalc en **Spring Boot 4.1.1** + **Spring AI 2.0.1**, transport **STDIO**.
+
+Le SDK Java sous-jacent (2.0.1) parle au maximum **MCP 2025-11-25**. Aucune release Java stable ne supporte encore **2026-07-28**.
 
 Pour les agents IA : voir [`AGENTS.md`](AGENTS.md) (référencé aussi par [`CLAUDE.md`](CLAUDE.md)).
 
@@ -29,16 +31,16 @@ JAR attendu : `target/geocalc-mcp-server.jar`
 ## MCP Inspector
 
 ```bash
-npm exec --yes -- @modelcontextprotocol/inspector java -jar target/geocalc-mcp-server.jar
+npx --yes @modelcontextprotocol/inspector@2 ./run-stdio.sh
 ```
 
 Liste des outils en CLI :
 
 ```bash
-npm exec --yes -- @modelcontextprotocol/inspector --cli java -jar target/geocalc-mcp-server.jar --method tools/list
+npx --yes @modelcontextprotocol/inspector@2 --cli ./run-stdio.sh --method tools/list
 ```
 
-> Si `npx @modelcontextprotocol/inspector …` échoue localement, utiliser `npm exec` comme ci-dessus.
+> Inspector 2 traite `-jar` comme un flag : utiliser le wrapper `run-stdio.sh`.
 
 ## Configuration STDIO
 
